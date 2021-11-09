@@ -5,10 +5,11 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.util.AttributeSet
-import android.util.Log
 import android.view.View
 import androidx.core.graphics.createBitmap
 import java.util.*
+import kotlin.math.max
+import kotlin.math.min
 
 class DoomFire @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
@@ -21,6 +22,7 @@ class DoomFire @JvmOverloads constructor(
     private var sw = 0
 
     private val scale = 5
+    private val paletteSize = palette.size - 1
     private val rand = Random()
     private val paint = Paint()
 
@@ -42,13 +44,11 @@ class DoomFire @JvmOverloads constructor(
 
     private fun drawFire(canvas: Canvas) {
         bitmapPixels = IntArray(sw * sh)
-        val paletteSize = palette.size - 1
-        var t: Int
         for (y in 0 until sh - 1) {
             for (x in 0 until sw) {
-                spreadFire(x, y)
-                t = Math.min(paletteSize, Math.max(0, temp[y * sw + x]))
-                bitmapPixels[sw * y + x] = palette[t]
+                val to = y * sw + x
+                spreadFire(to)
+                bitmapPixels[to] = palette[temp[to]]
             }
         }
         bitmap.setPixels(bitmapPixels, 0, sw, 0, 0, sw, sh)
@@ -58,13 +58,10 @@ class DoomFire @JvmOverloads constructor(
     }
 
 
-    private fun spreadFire(x: Int, y: Int) {
-        val rx = rand.nextInt(3)
-        val ry = rand.nextInt(6)
-        val dx = Math.min(sw - 1, Math.max(0, x + rx - 1))
-        val dy = Math.min(sh - 1, y + ry)
-        val dt = -(rx and 1)
-        temp[y * sw + x] = Math.max(0, temp[dy * sw + dx] + dt)
+    private fun spreadFire(to: Int) {
+        val r = rand.nextInt(9)
+        val from = min(sw * sh - 1, max(0, to + sw * r + (if (r % 2 == 0) -1 else 1)))
+        temp[to] = min(paletteSize, max(0, temp[from] - (r and 1)))
     }
 
     companion object {
