@@ -3,29 +3,24 @@ package levkaantonov.com.study.doomfire
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
 import android.util.AttributeSet
 import android.util.Log
 import android.view.View
 import androidx.core.graphics.createBitmap
-import androidx.core.graphics.scale
-import java.lang.Math.round
 import java.util.*
-import kotlin.math.roundToInt
 
 class DoomFire @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
 
-    private lateinit var temp: Array<Array<Int>>
+    private lateinit var temp: IntArray
     private lateinit var bitmapPixels: IntArray
     private lateinit var bitmap: Bitmap
     private var sh = 0
     private var sw = 0
 
-    private val scale = 4
-
+    private val scale = 5
     private val rand = Random()
     private val paint = Paint()
 
@@ -35,52 +30,41 @@ class DoomFire @JvmOverloads constructor(
         sh = h / scale
         sw = w / scale
         bitmap = createBitmap(sw, sh)
-        temp = Array(sw) { Array(sh) { 0 } }
-        for (x in 0 until sw)
-            temp[x][sh - 1] = palette.size - 1
+        temp = IntArray(sw * sh)
+        for (x in sw * sh - sw until sw * sh)
+            temp[x] = palette.size - 1
     }
 
     override fun onDraw(canvas: Canvas) {
-        spreadFire()
         super.onDraw(canvas)
         drawFire(canvas)
     }
 
     private fun drawFire(canvas: Canvas) {
-        val pixelsCount = sw * sh
-        bitmapPixels = IntArray(pixelsCount)
-
-        var temperature: Int
-        for (x in 0 until sw) {
-            for (y in 0 until sh) {
-                temperature = temp[x][y]
-                if (temperature < 0)
-                    temperature = 0
-                if (temperature >= palette.size)
-                    temperature = palette.size - 1
-
-                val color = palette[temperature]
-                bitmapPixels[sw * y + x] = color
+        bitmapPixels = IntArray(sw * sh)
+        val paletteSize = palette.size - 1
+        var t: Int
+        for (y in 0 until sh - 1) {
+            for (x in 0 until sw) {
+                spreadFire(x, y)
+                t = Math.min(paletteSize, Math.max(0, temp[y * sw + x]))
+                bitmapPixels[sw * y + x] = palette[t]
             }
         }
         bitmap.setPixels(bitmapPixels, 0, sw, 0, 0, sw, sh)
-
         canvas.scale(scale.toFloat(), scale.toFloat())
         canvas.drawBitmap(bitmap, 0f, 0f, paint)
         invalidate()
     }
 
-    private fun spreadFire() {
-        for (y in 0 until sh - 1) {
-            for (x in 0 until sw) {
-                val rx = rand.nextInt(3)
-                val ry = rand.nextInt(6)
-                val dx = Math.min(sw - 1, Math.max(0, x + rx - 1))
-                val dy = Math.min(sh - 1, y + ry)
-                val dt = -(rx and 1)
-                temp[x][y] = Math.max(0, temp[dx][dy] + dt)
-            }
-        }
+
+    private fun spreadFire(x: Int, y: Int) {
+        val rx = rand.nextInt(3)
+        val ry = rand.nextInt(6)
+        val dx = Math.min(sw - 1, Math.max(0, x + rx - 1))
+        val dy = Math.min(sh - 1, y + ry)
+        val dt = -(rx and 1)
+        temp[y * sw + x] = Math.max(0, temp[dy * sw + dx] + dt)
     }
 
     companion object {
