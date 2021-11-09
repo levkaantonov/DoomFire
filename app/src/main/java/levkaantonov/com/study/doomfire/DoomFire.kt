@@ -10,22 +10,23 @@ import android.util.Log
 import android.view.View
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.scale
+import java.lang.Math.round
 import java.util.*
+import kotlin.math.roundToInt
 
 class DoomFire @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
 
     private lateinit var temp: Array<Array<Int>>
+    private lateinit var bitmapPixels: IntArray
     private lateinit var bitmap: Bitmap
     private var sh = 0
     private var sw = 0
 
-    //        private val scale = 360
     private val scale = 4
 
-    //    private val scale = 1
-    private val random = Random()
+    private val rand = Random()
     private val paint = Paint()
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -34,37 +35,52 @@ class DoomFire @JvmOverloads constructor(
         sh = h / scale
         sw = w / scale
         bitmap = createBitmap(sw, sh)
-        temp = Array(sh) { Array(sw) { 0 } }
-        for (x in temp[temp.size - 1].indices)
-            temp[temp.size - 1][x] = palette.size - 1
+        temp = Array(sw) { Array(sh) { 0 } }
+        for (x in 0 until sw)
+            temp[x][sh - 1] = palette.size - 1
     }
 
     override fun onDraw(canvas: Canvas) {
+        spreadFire()
         super.onDraw(canvas)
         drawFire(canvas)
     }
 
     private fun drawFire(canvas: Canvas) {
-        var temperature = 0
-        for (x in 0 until sw) {
-            for (y in sh - 2 downTo 0) {
-                val from = sh - y - 1
-                val to = sh - from
-                temp[y][x] = to - 1
+        val pixelsCount = sw * sh
+        bitmapPixels = IntArray(pixelsCount)
 
-                temperature = temp[y][x]
+        var temperature: Int
+        for (x in 0 until sw) {
+            for (y in 0 until sh) {
+                temperature = temp[x][y]
                 if (temperature < 0)
                     temperature = 0
                 if (temperature >= palette.size)
                     temperature = palette.size - 1
-                paint.color = palette[temperature]
-                bitmap.setPixel(x, y, paint.color)
+
+                val color = palette[temperature]
+                bitmapPixels[sw * y + x] = color
             }
         }
+        bitmap.setPixels(bitmapPixels, 0, sw, 0, 0, sw, sh)
 
-        canvas.scale(sw.toFloat(), sh.toFloat())
+        canvas.scale(scale.toFloat(), scale.toFloat())
         canvas.drawBitmap(bitmap, 0f, 0f, paint)
         invalidate()
+    }
+
+    private fun spreadFire() {
+        for (y in 0 until sh - 1) {
+            for (x in 0 until sw) {
+                val rx = rand.nextInt(3)
+                val ry = rand.nextInt(6)
+                val dx = Math.min(sw - 1, Math.max(0, x + rx - 1))
+                val dy = Math.min(sh - 1, y + ry)
+                val dt = -(rx and 1)
+                temp[x][y] = Math.max(0, temp[dx][dy] + dt)
+            }
+        }
     }
 
     companion object {
